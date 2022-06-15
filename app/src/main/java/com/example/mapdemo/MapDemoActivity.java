@@ -2,18 +2,25 @@ package com.example.mapdemo;
 
 import android.Manifest;
 import android.app.Dialog;
+import android.content.DialogInterface;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Looper;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.EditText;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.DialogFragment;
 
 import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.ErrorDialogFragment;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -28,6 +35,8 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 
@@ -37,7 +46,7 @@ import permissions.dispatcher.RuntimePermissions;
 import static com.google.android.gms.location.LocationServices.getFusedLocationProviderClient;
 
 @RuntimePermissions
-public class MapDemoActivity extends AppCompatActivity {
+public class MapDemoActivity extends AppCompatActivity implements GoogleMap.OnMapLongClickListener {
 
     private SupportMapFragment mapFragment;
     private GoogleMap map;
@@ -81,6 +90,13 @@ public class MapDemoActivity extends AppCompatActivity {
             Toast.makeText(this, "Error - Map Fragment was null!!", Toast.LENGTH_SHORT).show();
         }
 
+        Log.i("MapDemoActivity", "Map is " + map);
+
+        if (map != null) {
+            Log.i("MapDemoActivity", "Map is not null");
+            map.setOnMapLongClickListener(this);
+        }
+
     }
 
     protected void loadMap(GoogleMap googleMap) {
@@ -90,6 +106,7 @@ public class MapDemoActivity extends AppCompatActivity {
             Toast.makeText(this, "Map Fragment was loaded properly!", Toast.LENGTH_SHORT).show();
             MapDemoActivityPermissionsDispatcher.getMyLocationWithPermissionCheck(this);
             MapDemoActivityPermissionsDispatcher.startLocationUpdatesWithPermissionCheck(this);
+            map.setOnMapLongClickListener(this);
         } else {
             Toast.makeText(this, "Error - Map was null!!", Toast.LENGTH_SHORT).show();
         }
@@ -227,6 +244,50 @@ public class MapDemoActivity extends AppCompatActivity {
     public void onSaveInstanceState(Bundle savedInstanceState) {
         savedInstanceState.putParcelable(KEY_LOCATION, mCurrentLocation);
         super.onSaveInstanceState(savedInstanceState);
+    }
+
+    // display the alert that adds the marker
+    public void showAlertDialogForPoint(final LatLng latLng) {
+        RelativeLayout rlParent = findViewById(R.id.rlParent);
+        final View messageView = LayoutInflater.from(this).inflate(R.layout.message_item, rlParent);
+        // Create alert dialog builder
+        AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
+        // set message_item.xml to AlertDialog builder
+        alertDialogBuilder.setView(messageView);
+        // Create alert dialog
+        final AlertDialog alertDialog = alertDialogBuilder.create();
+
+        alertDialog.setButton(DialogInterface.BUTTON_POSITIVE, "OK",
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        // Define color of marker icon
+
+                        // Extract content from alert dialog
+                        String title =  ((EditText)messageView.findViewById(R.id.etTitle)).getText().toString();
+                        String snippet = ((EditText)messageView.findViewById(R.id.etSnippet)).getText().toString();
+
+                        // Create and add marker to the map
+                        Marker marker = map.addMarker(new MarkerOptions().position(latLng).title(title).snippet(snippet));
+
+                    }
+                });
+
+        alertDialog.setButton(DialogInterface.BUTTON_NEGATIVE, "CANCEL",
+                new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                });
+
+        alertDialog.show();
+    }
+
+    @Override
+    public void onMapLongClick(LatLng latLng) {
+        Toast.makeText(this, "Long press detected!", Toast.LENGTH_SHORT).show();
+        showAlertDialogForPoint(latLng);
     }
 
     // Define a DialogFragment that displays the error dialog
